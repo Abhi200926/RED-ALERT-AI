@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192" width="192" height="192">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+    <linearGradient id="shield" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#ef4444" />
+      <stop offset="100%" stop-color="#b91c1c" />
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="40" fill="url(#bg)" stroke="#dc2626" stroke-width="4"/>
+  <!-- Octagon Alert Icon -->
+  <path d="M64 42 L128 42 L156 70 L156 122 L128 150 L64 150 L36 122 L36 70 Z" fill="url(#shield)" stroke="#fca5a5" stroke-width="4"/>
+  <!-- Exclamation Point -->
+  <rect x="91" y="66" width="10" height="42" rx="5" fill="#ffffff"/>
+  <circle cx="96" cy="124" r="6" fill="#ffffff"/>
+  <!-- Radio Waves -->
+  <path d="M22 96 A74 74 0 0 1 170 96" fill="none" stroke="#ef4444" stroke-width="3" stroke-dasharray="6,6" opacity="0.7"/>
+</svg>

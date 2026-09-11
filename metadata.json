@@ -1,0 +1,7 @@
+{
+  "name": "RED ALERT AI",
+  "description": "Multi-channel, offline-first natural disaster alerts and emergency rescue communication platform.",
+  "requestFramePermissions": ["geolocation", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+

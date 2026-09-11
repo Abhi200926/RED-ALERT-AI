@@ -1,0 +1,33 @@
+{
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "name": "RED ALERT AI",
+  "short_name": "RedAlertAI",
+  "description": "Multi-channel, offline-first natural disaster alerts and emergency rescue communication system.",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#020617",
+  "background_color": "#020617",
+  "categories": ["weather", "emergency", "public safety", "utilities"],
+  "icons": [
+    {
+      "src": "/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
