@@ -118,7 +118,7 @@ export const SosButtonCard: React.FC<SosButtonCardProps> = ({
               <>
                 “Use only when you are in immediate danger and need emergency assistance.”
                 <span className="block text-slate-400 text-xs mt-1">
-                  Transmits your verified GPS coordinates, disaster type, situation, and casualty count to the emergency rescue dashboard.
+                  Simulates distress transmission to the in-app rescue command dashboard. Does not dispatch real-world rescue teams or 911.
                 </span>
               </>
             )}

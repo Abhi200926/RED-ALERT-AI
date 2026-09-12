@@ -30,6 +30,34 @@ export type NetworkStatusIndicator =
 
 export type RescuePriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
+export type RiskClassification = 'LOW' | 'MODERATE' | 'HIGH' | 'CRITICAL';
+
+export interface RiskFactorWeight {
+  factor: string;
+  score: number;
+  weight: string;
+  impact: 'low' | 'moderate' | 'high' | 'critical';
+  details: string;
+}
+
+export interface AiEmergencyRiskAssessment {
+  riskScore: number; // 0–100
+  priorityLevel: RiskClassification; // LOW | MODERATE | HIGH | CRITICAL
+  explanation: string; // e.g. "Large affected population + rapidly developing hazard + limited evacuation time."
+  mainFactors: RiskFactorWeight[];
+  recommendedResponsePriority: string; // e.g. "Immediate Tactical Evacuation & ALS Units"
+  disasterType: string;
+  severity: string;
+  peopleAffected: string;
+  location: string;
+  urgency: string;
+  description: string;
+  availableInfo: string;
+  calculatedAt: string;
+  model: string;
+  isDemoSimulation: boolean;
+}
+
 export interface Alert {
   id: string;
   disasterType: DisasterType;
@@ -58,6 +86,7 @@ export interface Alert {
     confidenceIndicator: string;
     disclaimer: string;
   };
+  riskAssessment?: AiEmergencyRiskAssessment;
 }
 
 export interface TimelineEvent {
@@ -230,9 +259,101 @@ export interface EmergencyRequest {
   lastTransmissionAttempt?: string;
   channelLogs?: string[];
   aiPriorityReason?: string;
+  riskAssessment?: AiEmergencyRiskAssessment;
   integritySignature?: string;
   isEncryptedAtRest?: boolean;
   isAnonymized?: boolean;
   retentionExpiry?: string;
 }
+
+export interface ServerInstance {
+  id: string;
+  name: string;
+  zone: string;
+  status: 'HEALTHY' | 'HIGH_LOAD' | 'FAILOVER_STANDBY' | 'DRAINING';
+  cpuPercent: number;
+  memoryPercent: number;
+  activeConnections: number;
+  requestsHandled: number;
+  isPrimary: boolean;
+}
+
+export interface PriorityQueueStats {
+  p0_lifeThreatening: { pending: number; processing: number; completed: number; avgLatencyMs: number };
+  p1_urgentRescue: { pending: number; processing: number; completed: number; avgLatencyMs: number };
+  p2_emergencyInfo: { pending: number; processing: number; completed: number; avgLatencyMs: number };
+  p3_normalTraffic: { pending: number; processing: number; completed: number; avgLatencyMs: number };
+  p4_backgroundTasks: { pending: number; processing: number; completed: number; avgLatencyMs: number };
+}
+
+export interface MessageQueueMetrics {
+  sosQueue: { pending: number; processing: number; completed: number };
+  disasterAlerts: { pending: number; processing: number; completed: number };
+  pushNotifications: { pending: number; processing: number; completed: number };
+  smsRequests: { pending: number; processing: number; completed: number };
+  aiAnalysis: { pending: number; processing: number; completed: number };
+}
+
+export interface SurgeProtectionState {
+  isSurgeModeActive: boolean;
+  surgeReason: string | null;
+  activatedAt: string | null;
+  activeSimulatedUsers: number;
+  requestsPerSecond: number;
+  loadBalancerAlgorithm: 'ROUND_ROBIN_LEAST_CONN' | 'WEIGHTED_RESPONSE_TIME';
+  instances: ServerInstance[];
+  priorityQueue: PriorityQueueStats;
+  messageQueues: MessageQueueMetrics;
+  cacheStatus: {
+    status: 'OPERATIONAL' | 'DEGRADED';
+    hitRatePercent: number;
+    cachedKeys: number;
+    evictionPolicy: string;
+    memoryAllocatedMb: number;
+  };
+  databaseProtection: {
+    connectionPoolSize: number;
+    activePoolConnections: number;
+    readReplicaNodes: number;
+    asyncBufferBacklog: number;
+    queryCacheHitRate: number;
+  };
+  cdnStatus: {
+    status: 'OPERATIONAL';
+    edgeLocations: number;
+    bandwidthSavedPercent: number;
+    isSimulated: boolean;
+  };
+}
+
+export interface TestCaseResult {
+  id: string;
+  category: 'CORE' | 'DISASTER' | 'SOS' | 'COMMUNICATION' | 'SECURITY' | 'SURGE_PROTECTION' | 'AI_ENGINE';
+  name: string;
+  expectedResult: string;
+  actualResult: string;
+  status: 'PASSED' | 'FAILED' | 'SKIPPED';
+  durationMs: number;
+  severity: 'CRITICAL' | 'HIGH' | 'MEDIUM';
+  details: string;
+}
+
+export interface TestSuiteReport {
+  timestamp: string;
+  totalTests: number;
+  passed: number;
+  failed: number;
+  skipped: number;
+  passRatePercent: number;
+  evaluatorScore: number;
+  criticalFailures: number;
+  tests: TestCaseResult[];
+  environment: {
+    runtime: string;
+    model: string;
+    securityLevel: string;
+    surgeProtection: string;
+  };
+}
+
 

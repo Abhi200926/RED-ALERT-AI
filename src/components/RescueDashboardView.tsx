@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { EmergencyRequest, SosStatus, CommunicationChannel, RescuePriority } from '../types';
+import React, { useState, useEffect } from 'react';
+import { EmergencyRequest, SosStatus, CommunicationChannel, RescuePriority, User, UserRole, AiEmergencyRiskAssessment } from '../types';
 import {
   ShieldAlert,
   Radio,
@@ -18,9 +18,18 @@ import {
   Sparkles,
   Info,
   ChevronRight,
+  ShieldCheck,
+  Lock,
+  Unlock,
+  UserCheck,
+  Activity,
 } from 'lucide-react';
 import { PROTOTYPE_DISCLAIMER } from '../services/communicationService';
 import { AiAnalysisService } from '../services/aiAnalysisService';
+import { authService } from '../services/authService';
+import { RiskAssessmentEngine } from '../services/riskAssessmentEngine';
+import { AiEmergencyRiskScoreCard } from './AiEmergencyRiskScoreCard';
+import { AiRiskAssessmentModal } from './AiRiskAssessmentModal';
 
 interface RescueDashboardViewProps {
   rescueRequests: EmergencyRequest[];
@@ -41,6 +50,77 @@ export const RescueDashboardView: React.FC<RescueDashboardViewProps> = ({
   const [aiAnalyses, setAiAnalyses] = useState<
     Record<string, { priority: RescuePriority; reason: string; recommendedUnits: string[] }>
   >({});
+
+  // AI Risk Assessment Simulator & Ticket Assessment State
+  const [isSimulatorOpen, setIsSimulatorOpen] = useState(false);
+  const [ticketAssessments, setTicketAssessments] = useState<Record<string, AiEmergencyRiskAssessment>>({});
+  const [evaluatingRiskIds, setEvaluatingRiskIds] = useState<Record<string, boolean>>({});
+
+  const getEffectiveAssessment = (req: EmergencyRequest): AiEmergencyRiskAssessment => {
+    if (ticketAssessments[req.id]) return ticketAssessments[req.id];
+    if (req.riskAssessment) return req.riskAssessment;
+    return RiskAssessmentEngine.calculateDeterministicAssessment({
+      disasterType: req.disasterType,
+      severity: req.severity,
+      peopleAffected: req.peopleCount,
+      location: req.locationName,
+      urgency: req.situation,
+      description: req.message,
+      availableInfo: req.isGpsConfirmed ? 'GPS confirmed coordinates' : 'Manual approximate sector',
+    });
+  };
+
+  const handleReevaluateRisk = async (req: EmergencyRequest) => {
+    setEvaluatingRiskIds((prev) => ({ ...prev, [req.id]: true }));
+    try {
+      const assessment = await RiskAssessmentEngine.evaluateRiskAssessment({
+        disasterType: req.disasterType,
+        severity: req.severity,
+        peopleAffected: req.peopleCount,
+        location: req.locationName,
+        urgency: req.situation,
+        description: req.message,
+        availableInfo: req.isGpsConfirmed ? 'GPS confirmed coordinates' : 'Manual approximate sector',
+      });
+      setTicketAssessments((prev) => ({ ...prev, [req.id]: assessment }));
+    } catch (err) {
+      console.warn('Failed to evaluate ticket risk:', err);
+    } finally {
+      setEvaluatingRiskIds((prev) => ({ ...prev, [req.id]: false }));
+    }
+  };
+
+  // Active Session & RBAC Demo Simulation State
+  const [currentUser, setCurrentUser] = useState<User | null>(() => authService.getUser());
+  const [authRole, setAuthRole] = useState<UserRole>(() => authService.getRole());
+  const [isSwitchingRole, setIsSwitchingRole] = useState<boolean>(false);
+  const [roleMessage, setRoleMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    return authService.subscribe((session) => {
+      setCurrentUser(session ? session.user : null);
+      setAuthRole(session ? session.user.role : 'CITIZEN');
+    });
+  }, []);
+
+  const handleRoleSwitch = async (role: UserRole) => {
+    setIsSwitchingRole(true);
+    setRoleMessage(null);
+    try {
+      const res = await authService.demoLogin(role);
+      if (res.success) {
+        setRoleMessage(`Simulation CAD Session active: ${role}`);
+        onRefreshRequests();
+      } else {
+        setRoleMessage(`Failed to switch role: ${res.error}`);
+      }
+    } catch {
+      setRoleMessage('Could not switch session.');
+    } finally {
+      setIsSwitchingRole(false);
+      setTimeout(() => setRoleMessage(null), 3500);
+    }
+  };
 
   const handleManualRefresh = () => {
     setIsRefreshing(true);
@@ -195,6 +275,16 @@ export const RescueDashboardView: React.FC<RescueDashboardViewProps> = ({
 
         <div className="flex items-center gap-2">
           <button
+            id="open-ai-risk-simulator-btn"
+            type="button"
+            onClick={() => setIsSimulatorOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-tech text-xs font-bold uppercase tracking-wider shadow-lg shadow-rose-600/30 transition-all active:scale-95"
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>AI Risk Simulator</span>
+          </button>
+
+          <button
             id="refresh-rescue-queue-btn"
             onClick={handleManualRefresh}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-200 border border-slate-800 text-xs font-semibold transition-all"
@@ -209,10 +299,92 @@ export const RescueDashboardView: React.FC<RescueDashboardViewProps> = ({
       <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/40 text-amber-200 text-xs flex items-start gap-2.5">
         <ShieldAlert className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
         <div className="leading-relaxed">
-          <strong className="text-white uppercase font-tech">Emergency Communication Prototype: </strong>
+          <strong className="text-white uppercase font-tech">DEMO / PROTOTYPE DISCLAIMER: </strong>
           {PROTOTYPE_DISCLAIMER}
         </div>
       </div>
+
+      {/* Operator Session & Simulation Role Switcher */}
+      <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2.5">
+          <div className="p-1.5 rounded-lg bg-rose-600/20 text-rose-400 border border-rose-500/30">
+            <UserCheck className="w-4 h-4" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="font-semibold text-slate-200">
+                {currentUser ? currentUser.name : 'Simulated Guest Session'}
+              </span>
+              <span
+                className={`px-2 py-0.5 rounded text-[10px] font-mono-num font-bold uppercase tracking-wider ${
+                  authRole === 'ADMIN'
+                    ? 'bg-purple-950 text-purple-300 border border-purple-500/50'
+                    : authRole === 'RESCUE_OPERATOR'
+                    ? 'bg-cyan-950 text-cyan-300 border border-cyan-500/50'
+                    : 'bg-slate-800 text-slate-300 border border-slate-700'
+                }`}
+              >
+                ROLE: {authRole}
+              </span>
+            </div>
+            <span className="text-[11px] text-slate-400">
+              {authRole === 'RESCUE_OPERATOR' || authRole === 'ADMIN'
+                ? 'Authorized CAD Responder: Full telemetry access and incident disposition controls.'
+                : 'Citizen mode: Coordinates and private survivor messages are masked by default.'}
+            </span>
+          </div>
+        </div>
+
+        {/* Quick 1-Click Role Switcher */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className="text-[10px] uppercase font-tech tracking-wider text-slate-400 mr-1">
+            Simulate Role:
+          </span>
+          <button
+            type="button"
+            onClick={() => handleRoleSwitch('RESCUE_OPERATOR')}
+            disabled={isSwitchingRole || authRole === 'RESCUE_OPERATOR'}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition border ${
+              authRole === 'RESCUE_OPERATOR'
+                ? 'bg-cyan-600 text-white border-cyan-500 shadow-sm'
+                : 'bg-slate-950 hover:bg-slate-800 text-slate-300 border-slate-800'
+            }`}
+          >
+            Operator
+          </button>
+          <button
+            type="button"
+            onClick={() => handleRoleSwitch('ADMIN')}
+            disabled={isSwitchingRole || authRole === 'ADMIN'}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition border ${
+              authRole === 'ADMIN'
+                ? 'bg-purple-600 text-white border-purple-500 shadow-sm'
+                : 'bg-slate-950 hover:bg-slate-800 text-slate-300 border-slate-800'
+            }`}
+          >
+            Admin
+          </button>
+          <button
+            type="button"
+            onClick={() => handleRoleSwitch('CITIZEN')}
+            disabled={isSwitchingRole || authRole === 'CITIZEN'}
+            className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold transition border ${
+              authRole === 'CITIZEN'
+                ? 'bg-slate-700 text-white border-slate-600 shadow-sm'
+                : 'bg-slate-950 hover:bg-slate-800 text-slate-300 border-slate-800'
+            }`}
+          >
+            Citizen
+          </button>
+        </div>
+      </div>
+
+      {roleMessage && (
+        <div className="px-3.5 py-2 rounded-xl bg-cyan-950/40 border border-cyan-500/40 text-cyan-200 text-xs flex items-center gap-2 animate-in fade-in duration-200">
+          <Info className="w-3.5 h-3.5 text-cyan-400" />
+          <span>{roleMessage}</span>
+        </div>
+      )}
 
       {/* Metrics Row */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -325,6 +497,7 @@ export const RescueDashboardView: React.FC<RescueDashboardViewProps> = ({
             const ChannelIcon = channelBadge.icon;
             const aiData = aiAnalyses[req.id];
             const currentPriority = aiData?.priority || req.priority;
+            const assessment = getEffectiveAssessment(req);
 
             return (
               <div
@@ -352,6 +525,21 @@ export const RescueDashboardView: React.FC<RescueDashboardViewProps> = ({
                       )}`}
                     >
                       PRIORITY: {currentPriority}
+                    </span>
+
+                    {/* AI Emergency Risk Score Badge */}
+                    <span
+                      className={`text-[10px] font-mono-num font-bold px-2 py-0.5 rounded-md border uppercase tracking-wider ${
+                        assessment.classification === 'CRITICAL'
+                          ? 'bg-rose-950 text-rose-300 border-rose-500/60'
+                          : assessment.classification === 'HIGH'
+                          ? 'bg-amber-950 text-amber-300 border-amber-500/60'
+                          : assessment.classification === 'MODERATE'
+                          ? 'bg-yellow-950 text-yellow-300 border-yellow-500/60'
+                          : 'bg-emerald-950 text-emerald-300 border-emerald-500/60'
+                      }`}
+                    >
+                      AI RISK: {assessment.riskScore}/100 ({assessment.classification})
                     </span>
 
                     {/* Channel Badge */}
@@ -412,6 +600,14 @@ export const RescueDashboardView: React.FC<RescueDashboardViewProps> = ({
                     <p className="italic leading-relaxed">“{req.message}”</p>
                   </div>
                 )}
+
+                {/* AI Emergency Risk Assessment Card (Score 0-100, Priority, Factors, Response Priority) */}
+                <AiEmergencyRiskScoreCard
+                  assessment={assessment}
+                  compact={true}
+                  onRefresh={() => handleReevaluateRisk(req)}
+                  isRefreshing={evaluatingRiskIds[req.id]}
+                />
 
                 {/* Multi-Channel Hop History */}
                 {req.channelLogs && req.channelLogs.length > 0 && (
@@ -478,8 +674,11 @@ export const RescueDashboardView: React.FC<RescueDashboardViewProps> = ({
 
                 {/* Responder Action Controls */}
                 <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-slate-800/80">
-                  <div className="text-[10px] text-slate-500 font-mono-num">
-                    Protocol: CAD-Interoperable v2.0
+                  <div className="flex items-center gap-2 text-[10px] text-slate-400 font-mono-num">
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                    <span>HMAC-SHA256: VALIDATED</span>
+                    <span className="text-slate-600">•</span>
+                    <span className="text-amber-400">SIMULATION CAD EXERCISE</span>
                   </div>
 
                   <div className="flex flex-wrap items-center gap-2">
@@ -489,7 +688,7 @@ export const RescueDashboardView: React.FC<RescueDashboardViewProps> = ({
                         onClick={() => onUpdateStatus(req.id, 'ACKNOWLEDGED')}
                         className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-slate-950 text-xs font-bold font-tech uppercase tracking-wider transition-all"
                       >
-                        Acknowledge
+                        Acknowledge (Sim)
                       </button>
                     ) : null}
 
@@ -509,7 +708,7 @@ export const RescueDashboardView: React.FC<RescueDashboardViewProps> = ({
                           }}
                           className="px-3 py-1.5 rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-bold font-tech uppercase tracking-wider transition-all"
                         >
-                          Assign Rescue Team
+                          Assign Rescue Team (Sim)
                         </button>
                       )}
 
@@ -522,7 +721,7 @@ export const RescueDashboardView: React.FC<RescueDashboardViewProps> = ({
                           onClick={() => onUpdateStatus(req.id, 'TEAM_EN_ROUTE')}
                           className="px-3 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold font-tech uppercase tracking-wider transition-all"
                         >
-                          Mark En Route
+                          Mark En Route (Sim)
                         </button>
                       )}
 
@@ -532,7 +731,7 @@ export const RescueDashboardView: React.FC<RescueDashboardViewProps> = ({
                         onClick={() => onUpdateStatus(req.id, 'RESOLVED')}
                         className="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold font-tech uppercase tracking-wider transition-all"
                       >
-                        Mark Resolved
+                        Mark Resolved (Sim)
                       </button>
                     )}
                   </div>
@@ -542,6 +741,12 @@ export const RescueDashboardView: React.FC<RescueDashboardViewProps> = ({
           })
         )}
       </div>
+
+      {/* AI Risk Assessment Simulator Modal for Judges & Operators */}
+      <AiRiskAssessmentModal
+        isOpen={isSimulatorOpen}
+        onClose={() => setIsSimulatorOpen(false)}
+      />
     </div>
   );
 };

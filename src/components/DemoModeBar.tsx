@@ -18,6 +18,7 @@ import {
   RefreshCw,
   CheckCircle2,
   AlertTriangle,
+  Sparkles,
 } from 'lucide-react';
 import { globalMultiChannelManager } from '../services/communicationService';
 import { OfflineStorageService } from '../services/offlineStorage';
@@ -28,6 +29,7 @@ interface DemoModeBarProps {
   onClearAlert: () => void;
   isSimulated: boolean;
   activeType?: DisasterType;
+  onOpenRiskSimulator?: () => void;
 }
 
 export const DemoModeBar: React.FC<DemoModeBarProps> = ({
@@ -249,6 +251,18 @@ export const DemoModeBar: React.FC<DemoModeBarProps> = ({
         >
           2. Natural Disaster Hazard Types (9 Hazards)
         </button>
+
+        {onOpenRiskSimulator && (
+          <button
+            id="open-risk-simulator-from-demobar-btn"
+            type="button"
+            onClick={onOpenRiskSimulator}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-tech font-bold tracking-wider uppercase bg-gradient-to-r from-amber-600 to-rose-600 hover:from-amber-500 hover:to-rose-500 text-white shadow-md shadow-amber-600/20 transition active:scale-95"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-yellow-200" />
+            <span>3. AI Risk Assessment Simulator</span>
+          </button>
+        )}
 
         {/* Clear / Reset to All Clear Button */}
         <button

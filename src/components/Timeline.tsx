@@ -1,7 +1,7 @@
 import React from 'react';
 import { TimelineEvent } from '../types';
 import { AlertLevelBadge } from './AlertLevelBadge';
-import { Activity, Clock } from 'lucide-react';
+import { Activity, Clock, PlayCircle, CheckCircle } from 'lucide-react';
 
 interface TimelineProps {
   events: TimelineEvent[];
@@ -27,6 +27,18 @@ export const Timeline: React.FC<TimelineProps> = ({ events }) => {
       </div>
 
       <div className="relative pl-6 space-y-4 before:absolute before:left-2 before:top-2 before:bottom-2 before:w-[2px] before:bg-slate-800">
+        {/* Render Start Marker */}
+        <div id="timeline-render-start" className="relative group transition-all">
+          <div className="absolute -left-[23px] top-1 w-3.5 h-3.5 rounded-full border-2 border-slate-950 bg-emerald-500 ring-2 ring-emerald-500/30 flex items-center justify-center" />
+          <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-emerald-950/40 border border-emerald-500/30 text-[11px] font-mono-num text-emerald-300">
+            <span className="flex items-center gap-1.5 font-bold">
+              <PlayCircle className="w-3.5 h-3.5 text-emerald-400" />
+              <span>[RENDER START] Latest Incoming Telemetry</span>
+            </span>
+            <span className="text-[10px] text-emerald-400/80">Active Stream</span>
+          </div>
+        </div>
+
         {events.map((evt) => {
           const isCritical = evt.severity === 'CRITICAL';
           const isWarning = evt.severity === 'WARNING';
@@ -73,6 +85,18 @@ export const Timeline: React.FC<TimelineProps> = ({ events }) => {
             </div>
           );
         })}
+
+        {/* Render End Marker */}
+        <div id="timeline-render-end" className="relative group transition-all pt-1">
+          <div className="absolute -left-[23px] top-2.5 w-3.5 h-3.5 rounded-full border-2 border-slate-950 bg-slate-600 ring-2 ring-slate-600/30 flex items-center justify-center" />
+          <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-slate-950/60 border border-slate-800 text-[11px] font-mono-num text-slate-400">
+            <span className="flex items-center gap-1.5">
+              <CheckCircle className="w-3.5 h-3.5 text-slate-500" />
+              <span>[RENDER END] Baseline Events Buffer</span>
+            </span>
+            <span className="text-[10px] text-slate-400 font-mono-num">{events.length} events logged</span>
+          </div>
+        </div>
       </div>
     </div>
   );

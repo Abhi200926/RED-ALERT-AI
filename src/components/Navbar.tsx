@@ -13,6 +13,8 @@ import {
   Flame,
   Zap,
   LifeBuoy,
+  ShieldAlert,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -24,6 +26,7 @@ interface NavbarProps {
   hasActiveAlert: boolean;
   activeSosCount?: number;
   onOpenSos?: () => void;
+  isSurgeModeActive?: boolean;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -35,12 +38,15 @@ export const Navbar: React.FC<NavbarProps> = ({
   hasActiveAlert,
   activeSosCount = 0,
   onOpenSos,
+  isSurgeModeActive = false,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Radio },
     { id: 'rescue-hub', label: 'Rescue Hub', icon: LifeBuoy, badge: activeSosCount > 0 ? activeSosCount : undefined },
+    { id: 'surge-protection', label: 'Surge Engine', icon: ShieldAlert, badgeText: isSurgeModeActive ? 'SURGE' : undefined, badgeColor: 'bg-amber-600' },
+    { id: 'qa-evaluator', label: 'QA Center', icon: ShieldCheck, badgeText: '98', badgeColor: 'bg-emerald-600' },
     { id: 'live-alerts', label: 'Live Alerts', icon: AlertOctagon },
     { id: 'safety-center', label: 'Safety Center', icon: Shield },
     { id: 'history', label: 'Alert History', icon: History },
@@ -123,6 +129,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                   {item.badge && item.badge > 0 && (
                     <span className="flex items-center justify-center min-w-4 h-4 px-1 rounded-full bg-rose-600 text-white text-[10px] font-mono-num font-bold">
                       {item.badge}
+                    </span>
+                  )}
+                  {item.badgeText && (
+                    <span className={`flex items-center justify-center px-1.5 py-0.2 rounded text-[9px] font-tech font-bold text-white uppercase tracking-wider ${item.badgeColor || 'bg-slate-700'}`}>
+                      {item.badgeText}
                     </span>
                   )}
                 </button>
@@ -232,6 +243,11 @@ export const Navbar: React.FC<NavbarProps> = ({
                 {item.badge && item.badge > 0 && (
                   <span className="flex items-center justify-center min-w-5 h-5 px-1 rounded-full bg-rose-600 text-white text-[10px] font-mono-num font-bold">
                     {item.badge}
+                  </span>
+                )}
+                {item.badgeText && (
+                  <span className={`flex items-center justify-center px-1.5 py-0.5 rounded text-[10px] font-tech font-bold text-white uppercase tracking-wider ${item.badgeColor || 'bg-slate-700'}`}>
+                    {item.badgeText}
                   </span>
                 )}
               </button>

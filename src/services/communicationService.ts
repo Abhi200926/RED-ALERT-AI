@@ -2,7 +2,7 @@ import { CommunicationChannel, NetworkStatusIndicator, EmergencyRequest, RescueP
 import { authService } from './authService';
 
 export const PROTOTYPE_DISCLAIMER =
-  'This is a hackathon prototype. Real-world emergency dispatch, SMS, satellite communication, rescue-team coordination, and country-specific emergency integrations require supported infrastructure, authorized providers, hardware, APIs, and partnerships.';
+  'DEMO / PROTOTYPE NOTICE: RED ALERT AI is an exploratory prototype and simulation system. It does NOT dispatch real-world emergency services, does NOT contact 911 or civil defense authorities, does NOT send real rescue teams, and cannot guarantee emergency communication. In a life-threatening crisis, immediately call 911, 112, or your local emergency services telephone number.';
 
 export interface ChannelStatus {
   channel: CommunicationChannel;

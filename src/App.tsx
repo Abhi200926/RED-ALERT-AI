@@ -31,7 +31,12 @@ import { NetworkStatusIndicatorBar } from './components/NetworkStatusIndicatorBa
 import { WorldwideEmergencyBar } from './components/WorldwideEmergencyBar';
 import { DemoScenariosModal } from './components/DemoScenariosModal';
 import { LocationService } from './services/locationService';
-import { CountryEmergencyConfig } from './types';
+import { CountryEmergencyConfig, SurgeProtectionState } from './types';
+import { DisasterSurgeBanner } from './components/DisasterSurgeBanner';
+import { SurgeProtectionView } from './components/SurgeProtectionView';
+import { QaEvaluatorView } from './components/QaEvaluatorView';
+import { authService } from './services/authService';
+import { AiRiskAssessmentModal } from './components/AiRiskAssessmentModal';
 
 const SETTINGS_STORAGE_KEY = 'redalert_user_settings_v1';
 const SOS_STORAGE_KEY = 'redalert_active_sos_request_v1';
@@ -97,7 +102,9 @@ export default function App() {
   // Fetch initial rescue requests from backend
   const fetchRescueRequests = async () => {
     try {
-      const res = await fetch('/api/sos');
+      const res = await fetch('/api/sos', {
+        headers: authService.getAuthHeaders(),
+      });
       if (res.ok) {
         const data = await res.json();
         if (data.requests) {
@@ -109,8 +116,62 @@ export default function App() {
     }
   };
 
+  // Massive Traffic Surge Protection state
+  const [surgeState, setSurgeState] = useState<SurgeProtectionState | null>(null);
+  const [isSurgeLoading, setIsSurgeLoading] = useState<boolean>(false);
+
+  const fetchSurgeState = async () => {
+    try {
+      const res = await fetch('/api/surge/status');
+      const data = await res.json();
+      if (data.success && data.data) {
+        setSurgeState(data.data);
+      }
+    } catch (err) {
+      console.warn('Failed to fetch surge status:', err);
+    }
+  };
+
+  const handleSimulateSurgeLoad = async (users: number) => {
+    setIsSurgeLoading(true);
+    try {
+      const res = await fetch('/api/surge/simulate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ users }),
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        setSurgeState(data.data);
+      }
+    } catch (err) {
+      console.warn('Error simulating surge load:', err);
+    } finally {
+      setIsSurgeLoading(false);
+    }
+  };
+
+  const handleToggleSurgeMode = async () => {
+    setIsSurgeLoading(true);
+    try {
+      const res = await fetch('/api/surge/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const data = await res.json();
+      if (data.success && data.data) {
+        setSurgeState(data.data);
+      }
+    } catch (err) {
+      console.warn('Error toggling surge mode:', err);
+    } finally {
+      setIsSurgeLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchRescueRequests();
+    fetchSurgeState();
   }, []);
 
   // Save settings when changed
@@ -245,7 +306,7 @@ export default function App() {
     try {
       await fetch(`/api/sos/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authService.getAuthHeaders(),
         body: JSON.stringify({ status: 'CANCELLED' }),
       });
     } catch (err) {
@@ -262,7 +323,7 @@ export default function App() {
     try {
       await fetch(`/api/sos/${id}`, {
         method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authService.getAuthHeaders(),
         body: JSON.stringify({ status: newStatus, assignedTeam: team }),
       });
     } catch (err) {
@@ -318,6 +379,13 @@ export default function App() {
         hasActiveAlert={hasActiveCriticalAlert}
         activeSosCount={pendingSosCount}
         onOpenSos={() => setIsSosModalOpen(true)}
+        isSurgeModeActive={Boolean(surgeState?.isSurgeModeActive)}
+      />
+
+      {/* Global Disaster Surge Warning Ribbon */}
+      <DisasterSurgeBanner
+        surgeState={surgeState}
+        onOpenSurgeDashboard={() => setCurrentTab('surge-protection')}
       />
 
       {/* Main Content Area */}
@@ -460,6 +528,22 @@ export default function App() {
               }}
             />
           </div>
+        )}
+
+        {/* VIEW: SURGE PROTECTION ENGINE */}
+        {currentTab === 'surge-protection' && (
+          <SurgeProtectionView
+            surgeState={surgeState}
+            onSimulateLoad={handleSimulateSurgeLoad}
+            onToggleSurgeMode={handleToggleSurgeMode}
+            onRefresh={fetchSurgeState}
+            isLoading={isSurgeLoading}
+          />
+        )}
+
+        {/* VIEW: QA EVALUATOR & TEST CENTER */}
+        {currentTab === 'qa-evaluator' && (
+          <QaEvaluatorView onNavigateToTab={(tab) => setCurrentTab(tab)} />
         )}
 
         {/* VIEW 3: SAFETY CENTER */}

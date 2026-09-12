@@ -5,6 +5,7 @@ import {
   SosSituation,
   PeopleNeedingHelp,
   AlertSeverity,
+  AiEmergencyRiskAssessment,
 } from '../types';
 import {
   LifeBuoy,
@@ -29,9 +30,12 @@ import {
   RefreshCw,
   Database,
   CheckCircle2,
+  Sparkles,
 } from 'lucide-react';
 import { PRESET_LOCATIONS } from '../data/mockDisasters';
 import { OfflineSosExport, OfflineSosData } from './OfflineSosExport';
+import { RiskAssessmentEngine } from '../services/riskAssessmentEngine';
+import { AiEmergencyRiskScoreCard } from './AiEmergencyRiskScoreCard';
 
 // Local storage key for persistent caching of failed/offline SOS transmissions
 export const CACHED_SOS_STORAGE_KEY = 'redalert_cached_sos_offline_payload_v1';
@@ -47,6 +51,7 @@ export interface CachedSosPayloadData {
   peopleCount: PeopleNeedingHelp;
   message: string;
   isDemo: boolean;
+  riskAssessment?: AiEmergencyRiskAssessment;
 }
 
 export interface CachedSosRecord {
@@ -276,6 +281,55 @@ export const SosModal: React.FC<SosModalProps> = ({
   const [message, setMessage] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
+  // Dynamic AI Emergency Risk Assessment State
+  const [riskAssessment, setRiskAssessment] = useState<AiEmergencyRiskAssessment>(() =>
+    RiskAssessmentEngine.calculateDeterministicAssessment({
+      disasterType: defaultDisasterType || 'Flood',
+      severity: defaultSeverity || 'CRITICAL',
+      peopleAffected: '1',
+      location: defaultLocationName || 'Downtown District',
+      urgency: 'Trapped',
+      description: '',
+      availableInfo: 'Direct user distress beacon',
+    })
+  );
+  const [isEvaluatingRisk, setIsEvaluatingRisk] = useState<boolean>(false);
+
+  // Re-calculate assessment dynamically as form inputs change
+  useEffect(() => {
+    const updated = RiskAssessmentEngine.calculateDeterministicAssessment({
+      disasterType,
+      severity: defaultSeverity || 'CRITICAL',
+      peopleAffected: peopleCount,
+      location: locationName,
+      urgency: situation,
+      description: message,
+      availableInfo: isGpsConfirmed ? 'GPS confirmed coordinates' : 'Manual approximate sector',
+    });
+    setRiskAssessment(updated);
+  }, [disasterType, defaultSeverity, peopleCount, locationName, situation, message, isGpsConfirmed]);
+
+  // Trigger server-side Gemini 3.8 Flash evaluation on demand
+  const handleRunAiEvaluation = async () => {
+    setIsEvaluatingRisk(true);
+    try {
+      const result = await RiskAssessmentEngine.evaluateRiskAssessment({
+        disasterType,
+        severity: defaultSeverity || 'CRITICAL',
+        peopleAffected: peopleCount,
+        location: locationName,
+        urgency: situation,
+        description: message,
+        availableInfo: isGpsConfirmed ? 'GPS confirmed coordinates' : 'Manual approximate sector',
+      });
+      setRiskAssessment(result);
+    } catch (err) {
+      console.warn('AI risk evaluation error:', err);
+    } finally {
+      setIsEvaluatingRisk(false);
+    }
+  };
+
   // Sync if activeSosRequest changes
   useEffect(() => {
     if (activeSosRequest && step !== 'export') {
@@ -330,6 +384,7 @@ export const SosModal: React.FC<SosModalProps> = ({
       peopleCount,
       message: message.trim() || `Immediate assistance required for ${situation.toLowerCase()} situation.`,
       isDemo: true,
+      riskAssessment,
     };
 
     const nowFormatted = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -354,6 +409,7 @@ export const SosModal: React.FC<SosModalProps> = ({
         priority: 'CRITICAL',
         communicationMethod: 'OFFLINE_QUEUE',
         channelLogs: ['Stored in local encrypted outbox awaiting wireless link restoration.'],
+        riskAssessment,
       };
 
       const record: CachedSosRecord = {
@@ -421,6 +477,7 @@ export const SosModal: React.FC<SosModalProps> = ({
         priority: 'CRITICAL',
         communicationMethod: 'OFFLINE_QUEUE',
         channelLogs: ['Direct HTTP request failed due to connection drop. Preserved in device offline storage.'],
+        riskAssessment,
       };
 
       // Cache the failed SOS request details in local storage
@@ -623,6 +680,14 @@ export const SosModal: React.FC<SosModalProps> = ({
 
         {/* Modal Body */}
         <div className="p-5 sm:p-7 space-y-5 max-h-[80vh] overflow-y-auto">
+          {/* Mandatory Demo Prototype Notice */}
+          <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex items-start gap-2.5">
+            <Info className="w-4 h-4 text-amber-400 flex-shrink-0 mt-0.5" />
+            <div className="leading-relaxed">
+              <strong className="text-amber-300 uppercase font-tech tracking-wide">Demo / Prototype Notice: </strong>
+              This tool is an exploratory simulation prototype. It does <strong>NOT</strong> contact 911/112, dispatch real-world emergency services, or guarantee emergency response. In an actual emergency, call your local emergency phone number immediately.
+            </div>
+          </div>
           {/* STEP 1: CONFIRMATION SCREEN */}
           {step === 'confirm' && (
             <div id="sos-step-confirm" className="space-y-5 animate-in fade-in duration-200">
@@ -919,6 +984,25 @@ export const SosModal: React.FC<SosModalProps> = ({
                 />
               </div>
 
+              {/* Dynamic Real-Time AI Emergency Risk Assessment Preview */}
+              <div className="pt-1">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-tech font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-rose-400" />
+                    AI Emergency Risk Assessment (Real-Time Preview)
+                  </span>
+                  <span className="text-[10px] text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/30">
+                    Simulated AI Assessment
+                  </span>
+                </div>
+                <AiEmergencyRiskScoreCard
+                  assessment={riskAssessment}
+                  compact={true}
+                  onRefresh={handleRunAiEvaluation}
+                  isRefreshing={isEvaluatingRisk}
+                />
+              </div>
+
               {/* Submit & Cancel Buttons */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2">
                 <button
@@ -999,6 +1083,13 @@ export const SosModal: React.FC<SosModalProps> = ({
                   </div>
                 </div>
               </div>
+
+              {/* AI Emergency Risk Assessment Card for Active Distress Beacon */}
+              {(activeSosRequest.riskAssessment || riskAssessment) && (
+                <AiEmergencyRiskScoreCard
+                  assessment={activeSosRequest.riskAssessment || riskAssessment}
+                />
+              )}
 
               {/* Local Storage Outbox & Retry Sync Card */}
               {cachedSos && (

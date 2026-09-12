@@ -152,7 +152,7 @@ export const RedAlertOverlay: React.FC<RedAlertOverlayProps> = ({
                 onClick={onTriggerSos}
                 className="col-span-1 sm:col-span-3 flex items-center justify-center gap-2.5 px-4 py-3.5 rounded-xl bg-gradient-to-r from-rose-600 via-red-600 to-rose-700 hover:from-rose-500 hover:to-red-600 text-white font-tech font-black text-sm uppercase tracking-wider shadow-xl shadow-rose-600/50 transition-all hover:scale-[1.01] active:scale-95 border-2 border-rose-400/40"
               >
-                <span>🚨 I NEED RESCUE (SEND SOS)</span>
+                <span>🚨 I NEED RESCUE (SIMULATE DEMO SOS)</span>
               </button>
             )}
 
